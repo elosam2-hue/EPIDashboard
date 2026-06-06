@@ -4,7 +4,7 @@ import re
 import time
 
 st.set_page_config(
-    page_title="Immunization Data Triangulation",
+    page_title="South Ethiopia Immunization Data Triangulation",
     layout="wide",
     page_icon="🩺"
 )
@@ -269,14 +269,14 @@ with st.sidebar:
     nav = st.radio("", ["🏠 Dashboard", "📊 Upload & Process", "📈 Analytics", "⚙️ Settings"], index=1, label_visibility="collapsed")
     st.markdown("---")
     st.markdown(f"**Username:** {st.session_state.get('username','User')}")
-    st.markdown("**Role:** Data Manager")
+    st.markdown("**Role:** Data Analyst")
     st.markdown("---")
     if st.button("🚪 Logout", use_container_width=True):
         st.session_state.clear()
         st.experimental_rerun()
 
 # ----------------- Header -----------------
-st.markdown('<div class="main-header-container"><h1>Vaccine Data Processing & Matching</h1></div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header-container"><h1>South Ethiopia Vaccine Data Processing & Matching</h1></div>', unsafe_allow_html=True)
 
 # ----------------- Info -----------------
 st.markdown("""
