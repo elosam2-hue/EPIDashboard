@@ -1,0 +1,9 @@
+credentials:
+  usernames:
+    elias:
+      name: Elias Samuel
+      password: $2b$12$.XuqJSNGN4l3DCMaUh/Wne/MAfINhnwOsryunwHh35j0ZNXXXHjq.
+cookie:
+  name: epi_dashboard_cookie
+  key: secret_key_change_this
+  expiry_days: 30
