@@ -7,7 +7,7 @@ import re
 from datetime import datetime
 
 st.set_page_config(
-    page_title="Immunization Data Triangulation",
+    page_title="South Ethiopia Immunization Data Triangulation",
     layout="wide",
     page_icon="🩺"
 )
