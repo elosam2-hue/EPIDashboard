@@ -171,7 +171,21 @@ col1, col2, col3 = st.columns([1,4,1])
 with col1:
     st.image("assets/moh_logo.png", width=100)
 with col2:
-    st.markdown('<div class="main-header-container"><h3 style="text-align: center; margin: 0;">South Ethiopia Immunization Data Triangulation Application</h3></div>', unsafe_allow_html=True)
+
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+</style>
+<div class="main-header-container">
+    <h3 style="text-align: center; margin: 0; color: white; font-family: 'Poppins', sans-serif;">
+        South Ethiopia Immunization Data Triangulation Application
+    </h3>
+</div>
+""", unsafe_allow_html=True)
+
+    
+    
+    
     st.markdown('<p class="subtitle">Comprehensive analysis of vaccine administration and distribution data</p>', unsafe_allow_html=True)
 with col3:
     st.image("assets/eth_flag.png", width=100)
