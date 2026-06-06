@@ -2,7 +2,7 @@ credentials:
   usernames:
     elias:
       name: Elias Samuel
-      password: $2b$12$.XuqJSNGN4l3DCMaUh/Wne/MAfINhnwOsryunwHh35j0ZNXXXHjq.
+      password: $2b$12$/j2Gdf9RI22esV.VKLtOC.UP7S.e9pMHqoWF7hyhYlsLJCE58F5x
 cookie:
   name: epi_dashboard_cookie
   key: secret_key_change_this
