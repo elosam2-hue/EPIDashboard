@@ -8,7 +8,7 @@ from io import BytesIO
 # Page Config
 # =======================
 st.set_page_config(
-    page_title="Vaccine Utilization Analytics Dashboard",
+    page_title="South Ethiopia Vaccine Utilization Analytics Dashboard",
     layout="wide",
     page_icon="💉"
 )
