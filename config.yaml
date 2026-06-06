@@ -1,9 +1,9 @@
+cookie:
+  expiry_days: 30
+  key: secret_key_change_this
+  name: epi_dashboard_cookie
 credentials:
   usernames:
     elias:
       name: Elias Samuel
-      password: $2b$12$/j2Gdf9RI22esV.VKLtOC.UP7S.e9pMHqoWF7hyhYlsLJCE58F5x
-cookie:
-  name: epi_dashboard_cookie
-  key: secret_key_change_this
-  expiry_days: 30
+      password: $2b$12$/j2Gdf9RI22esV.VKLtOC.UP7S.e9pMHqoWF7hyhYlsLJCE58F5xa
