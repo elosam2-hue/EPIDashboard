@@ -190,7 +190,7 @@ if not st.session_state["authenticated"]:
     login_button = st.button("🚀 Login", use_container_width=True)
 
     if login_button:
-        if username == "Elias" and password == "password":  # Demo credentials
+        if username == "serhb" and password == "password":  # Demo credentials
             login()
             st.success("✅ Logged in successfully! Refresh the page to continue.")
         else:
