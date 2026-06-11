@@ -485,6 +485,11 @@ def main():
     # Period filter
     periods = sorted(df_all["Period"].unique())
     selected_period = st.sidebar.selectbox("Select Period", ["All"] + periods)
+
+# Year filter
+    year = sorted(df_all["Year"].unique())
+    selected_year = st.sidebar.selectbox("Select year", ["All"] + year)
+
     
     # Vaccine filter
     selected_vaccine = st.sidebar.selectbox("Select Vaccine", ["All"] + vaccines)
