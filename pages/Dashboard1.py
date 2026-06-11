@@ -421,6 +421,7 @@ def categorize_utilization(row, vaccine_name):
         return "Acceptable"
     else:
         return "Low Utilization"
+
 # =======================
 # Main Dashboard Logic
 # =======================
@@ -444,12 +445,30 @@ def main():
     
     df_all = st.session_state["matched_df"]
     
-    # Check for required columns
+    # Check for required columns (Year is derived, not required from raw data)
     required_cols = ["Region_Admin", "Zone_Admin", "Woreda_Admin", "Period"]
     if not all(col in df_all.columns for col in required_cols):
         st.error("Essential columns (Region, Zone, Woreda, Period) are missing from the processed data.")
         return
-    
+
+    # -------------------------------------------------------
+    # Derive the "Year" column from "Period" if not present.
+    # Handles common formats: "2024-01", "Jan 2024", "2024/01",
+    # "EFY2016Q1", plain integers like 2024, etc.
+    # -------------------------------------------------------
+    if "Year" not in df_all.columns:
+        try:
+            # Try pandas date parsing first (covers "2024-01", "Jan 2024", etc.)
+            df_all["Year"] = pd.to_datetime(df_all["Period"], errors="coerce").dt.year
+            # If most values are NaT, fall back to extracting a 4-digit year with regex
+            if df_all["Year"].isna().mean() > 0.5:
+                df_all["Year"] = df_all["Period"].astype(str).str.extract(r"(\d{4})")[0].astype(float)
+        except Exception:
+            df_all["Year"] = df_all["Period"].astype(str).str.extract(r"(\d{4})")[0].astype(float)
+        
+        # Convert to nullable integer for clean display
+        df_all["Year"] = pd.to_numeric(df_all["Year"], errors="coerce").astype("Int64")
+
     # Prepare data for calculation
     vaccines = ["BCG", "IPV", "Measles", "Penta", "Rota"]
     for vaccine in vaccines:
@@ -468,13 +487,20 @@ def main():
     selected_region = st.sidebar.selectbox("Select Region", ["All"] + regions)
     
     # Zone filter (chained to Region)
-    filtered_zones = df_all[df_all["Region_Admin"] == selected_region]["Zone_Admin"].unique() if selected_region != "All" else df_all["Zone_Admin"].unique()
+    filtered_zones = (
+        df_all[df_all["Region_Admin"] == selected_region]["Zone_Admin"].unique()
+        if selected_region != "All"
+        else df_all["Zone_Admin"].unique()
+    )
     zones = sorted(filtered_zones)
     selected_zone = st.sidebar.selectbox("Select Zone", ["All"] + zones)
     
     # Woreda filter (chained to Zone)
     if selected_zone != "All":
-        filtered_woredas = df_all[(df_all["Region_Admin"] == selected_region) & (df_all["Zone_Admin"] == selected_zone)]["Woreda_Admin"].unique()
+        filtered_woredas = df_all[
+            (df_all["Region_Admin"] == selected_region) &
+            (df_all["Zone_Admin"] == selected_zone)
+        ]["Woreda_Admin"].unique()
     elif selected_region != "All":
         filtered_woredas = df_all[df_all["Region_Admin"] == selected_region]["Woreda_Admin"].unique()
     else:
@@ -486,16 +512,15 @@ def main():
     periods = sorted(df_all["Period"].unique())
     selected_period = st.sidebar.selectbox("Select Period", ["All"] + periods)
 
-    # Year filter
-    year = sorted(df_all["year"].unique())
-    selected_year = st.sidebar.selectbox("Select year", ["All"] + year)
+    # Year filter (derived column, always available now)
+    years = sorted(df_all["Year"].dropna().unique())
+    selected_year = st.sidebar.selectbox("Select Year", ["All"] + [str(y) for y in years])
 
-    
     # Vaccine filter
     selected_vaccine = st.sidebar.selectbox("Select Vaccine", ["All"] + vaccines)
     
     # Filtering Logic
-    filtered_df = df_all
+    filtered_df = df_all.copy()
     if selected_region != "All":
         filtered_df = filtered_df[filtered_df["Region_Admin"] == selected_region]
     if selected_zone != "All":
@@ -505,9 +530,8 @@ def main():
     if selected_period != "All":
         filtered_df = filtered_df[filtered_df["Period"] == selected_period]
     if selected_year != "All":
-        filtered_df = filtered_df[filtered_df["year"] == selected_year]
+        filtered_df = filtered_df[filtered_df["Year"].astype(str) == selected_year]
 
-    
     if filtered_df.empty:
         st.warning("⚠️ No data found for the selected filters.")
         return
@@ -544,11 +568,15 @@ def main():
         st.markdown(f'<div class="tab-metric-box"><div class="tab-metric-label">Overall Utilization Rate</div><div class="tab-metric-value">{overall_utilization_rate:.2f}%</div></div>', unsafe_allow_html=True)
     
     # Tabs
-    tab1, tab2, tab3, tab4 = st.tabs(["Performance", "Woreda Counts by Utilization Category", "Overall Utilization Breakdown (Pie chart)", "Utilization by Region"])
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "Performance",
+        "Woreda Counts by Utilization Category",
+        "Overall Utilization Breakdown (Pie chart)",
+        "Utilization by Region"
+    ])
     
     with tab1:
         st.subheader("Performance Metrics")
-        # KPIs already displayed above, or add more if needed
         st.info("Key performance indicators are shown in the overview section above.")
     
     with tab2:
@@ -560,7 +588,9 @@ def main():
             st.warning(f"Utilization data for {selected_vaccine} is not available in the processed files.")
             return
         
-        filtered_df[f"{selected_vaccine}_Utilization_Category"] = filtered_df.apply(lambda row: categorize_utilization(row, selected_vaccine), axis=1)
+        filtered_df[f"{selected_vaccine}_Utilization_Category"] = filtered_df.apply(
+            lambda row: categorize_utilization(row, selected_vaccine), axis=1
+        )
         category_counts = filtered_df[f"{selected_vaccine}_Utilization_Category"].value_counts()
         
         col_w1, col_w2, col_w3, col_w4 = st.columns(4)
@@ -579,15 +609,18 @@ def main():
             st.info("Select a specific vaccine to view the pie chart.")
             return
         
-        # Pie chart data preparation
         category_counts_pie = category_counts.reset_index()
         category_counts_pie.columns = ["Category", "Count"]
-        category_counts_pie["Percentage"] = (category_counts_pie["Count"] / category_counts_pie["Count"].sum() * 100).round(2)
+        category_counts_pie["Percentage"] = (
+            category_counts_pie["Count"] / category_counts_pie["Count"].sum() * 100
+        ).round(2)
         
         color_map = {"Acceptable": "#28a745", "Unacceptable": "#007bff", "Low Utilization": "#dc3545"}
-        pie_fig = px.pie(category_counts_pie, values="Percentage", names="Category", hole=0.0, color="Category", color_discrete_map=color_map,
-                         title=f"Utilization Category Distribution for {selected_vaccine}")
-        
+        pie_fig = px.pie(
+            category_counts_pie, values="Percentage", names="Category",
+            hole=0.0, color="Category", color_discrete_map=color_map,
+            title=f"Utilization Category Distribution for {selected_vaccine}"
+        )
         pie_fig.update_traces(
             textinfo='percent+label',
             textfont=dict(color="white", size=12, weight='bold'),
@@ -595,27 +628,14 @@ def main():
             insidetextorientation='horizontal'
         )
         pie_fig.update_layout(
-            plot_bgcolor='white',
-            paper_bgcolor='white',
-            font=dict(color='#2c3e50', size=12),
-            height=450,
-            showlegend=True,
+            plot_bgcolor='white', paper_bgcolor='white',
+            font=dict(color='#2c3e50', size=12), height=450, showlegend=True,
             legend=dict(
-                bgcolor='rgba(255,255,255,0.95)',
-                font=dict(color='#2c3e50', size=11),
-                orientation="h",
-                yanchor="bottom",
-                y=-0.2,
-                xanchor="center",
-                x=0.5
+                bgcolor='rgba(255,255,255,0.95)', font=dict(color='#2c3e50', size=11),
+                orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5
             ),
-            title=dict(
-                font=dict(size=18, color='#2c3e50', weight='bold'),
-                x=0.5,
-                xanchor='center'
-            )
+            title=dict(font=dict(size=18, color='#2c3e50', weight='bold'), x=0.5, xanchor='center')
         )
-        
         st.plotly_chart(pie_fig, use_container_width=True)
     
     with tab4:
@@ -631,70 +651,66 @@ def main():
         elif selected_region != "All":
             groupby_col = "Zone_Admin"
         
-        stacked_bar_data = filtered_df.groupby([groupby_col, f"{selected_vaccine}_Utilization_Category"]).size().reset_index(name='Count')
+        stacked_bar_data = filtered_df.groupby(
+            [groupby_col, f"{selected_vaccine}_Utilization_Category"]
+        ).size().reset_index(name='Count')
         total_by_group = stacked_bar_data.groupby(groupby_col)["Count"].sum().reset_index(name='Total')
         stacked_bar_data = stacked_bar_data.merge(total_by_group, on=groupby_col)
-        stacked_bar_data["Percentage"] = (stacked_bar_data["Count"] / stacked_bar_data["Total"] * 100).round(2)
+        stacked_bar_data["Percentage"] = (
+            stacked_bar_data["Count"] / stacked_bar_data["Total"] * 100
+        ).round(2)
         
         bar_fig = go.Figure()
         for category in ["Acceptable", "Low Utilization", "Unacceptable"]:
-            f_data = stacked_bar_data[stacked_bar_data[f"{selected_vaccine}_Utilization_Category"] == category]
-            bar_fig.add_trace(go.Bar(x=f_data[groupby_col], y=f_data["Percentage"], name=category, marker_color=color_map.get(category),
-                                     text=f_data["Percentage"].apply(lambda x: f"{x:.0f}%"),
-                                     textposition='inside',
-                                     textfont=dict(color='white', size=10, weight='bold'),
-                                     hovertemplate=f"<b>%{{x}}</b><br>{category}: %{{y:.2f}}%<br>Woreda Count: %{{customdata}}<extra></extra>",
-                                     customdata=f_data['Count']))
+            f_data = stacked_bar_data[
+                stacked_bar_data[f"{selected_vaccine}_Utilization_Category"] == category
+            ]
+            bar_fig.add_trace(go.Bar(
+                x=f_data[groupby_col], y=f_data["Percentage"],
+                name=category, marker_color=color_map.get(category),
+                text=f_data["Percentage"].apply(lambda x: f"{x:.0f}%"),
+                textposition='inside',
+                textfont=dict(color='white', size=10, weight='bold'),
+                hovertemplate=f"<b>%{{x}}</b><br>{category}: %{{y:.2f}}%<br>Woreda Count: %{{customdata}}<extra></extra>",
+                customdata=f_data['Count']
+            ))
         
         bar_fig.update_layout(
             barmode="stack",
             yaxis=dict(
-                title="Percentage (%)",
-                range=[0, 100],
-                tickformat=".0f",
+                title="Percentage (%)", range=[0, 100], tickformat=".0f",
                 title_font=dict(size=14, color='#2c3e50', weight='bold'),
-                tickfont=dict(size=12, color='#2c3e50'),
-                showgrid=False,
-                zeroline=False
+                tickfont=dict(size=12, color='#2c3e50'), showgrid=False, zeroline=False
             ),
             xaxis=dict(
-                title=groupby_col.split('_')[0],
-                tickangle=-45,
+                title=groupby_col.split('_')[0], tickangle=-45,
                 title_font=dict(size=14, color='#2c3e50', weight='bold'),
-                tickfont=dict(size=11, color='#2c3e50'),
-                showgrid=False
+                tickfont=dict(size=11, color='#2c3e50'), showgrid=False
             ),
-            legend_title_text="Utilization Category",
-            bargap=0.2,
+            legend_title_text="Utilization Category", bargap=0.2,
             legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1,
+                orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
                 font=dict(size=12, color='#2c3e50'),
                 title_font=dict(size=12, color='#2c3e50', weight='bold')
             ),
-            height=650,
-            plot_bgcolor='white',
-            paper_bgcolor='white',
+            height=650, plot_bgcolor='white', paper_bgcolor='white',
             font=dict(color='#2c3e50', size=12),
             title=dict(
                 text=f"Utilization by {groupby_col.split('_')[0]} - {selected_vaccine}",
-                font=dict(size=16, color='#2c3e50', weight='bold'),
-                x=0.5,
-                xanchor='center'
+                font=dict(size=16, color='#2c3e50', weight='bold'), x=0.5, xanchor='center'
             )
         )
-        
-        # Remove gridlines completely
         bar_fig.update_xaxes(showgrid=False)
         bar_fig.update_yaxes(showgrid=False)
-        
         st.plotly_chart(bar_fig, use_container_width=True)
         
         with st.expander("📋 Show Woreda-Level Data"):
-            display_df = filtered_df[["Region_Admin", "Zone_Admin", "Woreda_Admin", "Period", f"{selected_vaccine}_Administered", f"{selected_vaccine}_Distributed", f"{selected_vaccine}_Utilization_Rate"]].copy()
+            display_df = filtered_df[[
+                "Region_Admin", "Zone_Admin", "Woreda_Admin", "Period", "Year",
+                f"{selected_vaccine}_Administered",
+                f"{selected_vaccine}_Distributed",
+                f"{selected_vaccine}_Utilization_Rate"
+            ]].copy()
             display_df.rename(columns={
                 "Region_Admin": "Region",
                 "Zone_Admin": "Zone",
@@ -703,8 +719,9 @@ def main():
                 f"{selected_vaccine}_Distributed": "Distributed",
                 f"{selected_vaccine}_Utilization_Rate": "Utilization Rate"
             }, inplace=True)
-            st.dataframe(display_df.sort_values(by="Utilization Rate", ascending=False).reset_index(drop=True))
-            
+            st.dataframe(
+                display_df.sort_values(by="Utilization Rate", ascending=False).reset_index(drop=True)
+            )
             st.download_button(
                 label="📥 Download Woreda Data as Excel",
                 data=to_excel(display_df),
