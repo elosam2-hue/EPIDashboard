@@ -487,7 +487,7 @@ def main():
     selected_period = st.sidebar.selectbox("Select Period", ["All"] + periods)
 
 # Year filter
-    year = sorted(df_all["Year"].unique())
+    year = sorted(df_all["year"].unique())
     selected_year = st.sidebar.selectbox("Select year", ["All"] + year)
 
     
