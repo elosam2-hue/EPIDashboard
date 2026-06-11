@@ -504,6 +504,9 @@ def main():
         filtered_df = filtered_df[filtered_df["Woreda_Admin"] == selected_woreda]
     if selected_period != "All":
         filtered_df = filtered_df[filtered_df["Period"] == selected_period]
+if selected_year != "All":
+        filtered_df = filtered_df[filtered_df["year"] == selected_year]
+
     
     if filtered_df.empty:
         st.warning("⚠️ No data found for the selected filters.")
